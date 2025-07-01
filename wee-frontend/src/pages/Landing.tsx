@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import styled from 'styled-components';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
@@ -10,6 +9,7 @@ import { useNavigate } from 'react-router-dom';
 import { deleteCookie, getCookie } from '../utils';
 import { useRoom } from '../hooks/useRoom';
 import { toast } from 'react-toastify';
+import { useState } from 'react';
 
 const Landing = () => {
   const navigate = useNavigate();
@@ -19,6 +19,24 @@ const Landing = () => {
   const [isLoggedIn, setIsLoggedIn] = useState(!!getCookie('accessToken'));
 
   const { getRooms, createRoom } = useRoom();
+
+  const navigateToChat = async () => {
+    try {
+      const roomsResult = await getRooms.refetch();
+      const rooms = roomsResult.data;
+      
+      if (!rooms?.length) {
+        setRoomModalOpen(true);
+        return false;
+      }
+      
+      navigate(`/chat/${rooms[0].id}`);
+      return true;
+    } catch (error) {
+      toast.error('채팅방 정보를 불러오는 중 오류가 발생했습니다.');
+      return false;
+    }
+  };
 
   const openLoginModal = () => {
     setAnimating(false);
@@ -30,8 +48,13 @@ const Landing = () => {
     setLoginModalOpen(false);
   };
 
-  const handleLoginSuccess = () => {
+  const handleLoginSuccess = async () => {
     setIsLoggedIn(true);
+    setLoginModalOpen(false);
+    const navigated = await navigateToChat();
+    if (navigated) {
+      toast.success('로그인 성공! 상담 페이지로 이동합니다.');
+    }
   };
 
   const handleLogout = () => {
@@ -46,35 +69,23 @@ const Landing = () => {
       openLoginModal();
       return;
     }
-
-    try {
-      const roomsResult = await getRooms.refetch();
-
-      if (!roomsResult.data || roomsResult.data.length === 0) {
-        // 방이 없으면 모달 열기
-        setRoomModalOpen(true);
-      } else {
-        // 방이 있으면 첫번째 방으로 이동
-        navigate(`/chat/${roomsResult.data[0].id}`);
-      }
-    } catch (error) {
-      alert('채팅방 정보를 불러오는 중 오류가 발생했습니다.');
-    }
+    await navigateToChat();
   };
 
   const handleCreateRoom = async (roomName: string) => {
     try {
       const newRoom = await createRoom.mutateAsync({ name: roomName });
       setRoomModalOpen(false);
-      toast.success('방 생성이 완료되었습니다!');  // 성공 토스트
+      toast.success('방 생성이 완료되었습니다!');
       navigate(`/chat/${newRoom.id}`);
     } catch (error) {
-      toast.error('채팅방 생성에 실패했습니다.');  // 실패 토스트
+      toast.error('채팅방 생성에 실패했습니다.');
     }
   };
+
   return (
     <Container>
-      <Header onLoginClick={openLoginModal} isLoggedIn={isLoggedIn} onLogout={handleLogout}  />
+      <Header onLoginClick={openLoginModal} isLoggedIn={isLoggedIn} onLogout={handleLogout} />
       <FirstSection>
         <div className='inner'>
           <div className='first-left'>
@@ -125,7 +136,6 @@ const Landing = () => {
 const Container = styled.div``;
 
 const FirstSection = styled.section`
-  /* 기존 스타일 유지 */
   * {
     white-space: nowrap;
   }
@@ -178,7 +188,6 @@ const FirstSection = styled.section`
 `;
 
 const SecondSection = styled.section`
-  /* 기존 스타일 유지 */
   width: 100%;
   .inner {
     display: flex;

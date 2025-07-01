@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import styled, { keyframes } from 'styled-components';
 
 interface ProfileButtonProps {
@@ -9,8 +8,7 @@ interface ProfileButtonProps {
   onChatClick: () => void;
 }
 
-const ProfileButton = ({ isLoggedIn, onLoginClick, onLogout}: ProfileButtonProps) => {
-  const navigate = useNavigate();
+const ProfileButton = ({ isLoggedIn, onLoginClick, onLogout, onChatClick }: ProfileButtonProps) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -40,7 +38,7 @@ const ProfileButton = ({ isLoggedIn, onLoginClick, onLogout}: ProfileButtonProps
         <>
           <img src='/user-icon.png' alt='User Profile' onClick={handleProfileClick} />
           <ProfileMenu className={isMenuOpen ? 'show' : 'hide'}>
-            <li onClick={() => navigate('/chat')}>상담하기</li>
+          <li onClick={onChatClick}>상담하기</li>
             <li onClick={onLogout}>로그아웃</li>
           </ProfileMenu>
         </>

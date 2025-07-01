@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import type { MessageType } from '../types/message.type';
 import { postWithToken, getWithToken } from '../api';
-import { getCookie } from '../utils'; // 추가
+import { getCookie } from '../utils';
 
 interface ServerMessage {
   id: number;

@@ -2,6 +2,9 @@ import { useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
 import headerLogo from '/header-logo.png';
 import ProfileButton from './ProfileButton';
+import { toast } from 'react-toastify';
+import { getCookie } from '../utils';
+import { useRoom } from '../hooks/useRoom';
 
 
 interface HeaderProps {
@@ -12,10 +15,29 @@ interface HeaderProps {
 
 const Header = ({ isLoggedIn = false, onLoginClick, onLogout }: HeaderProps) => {
   const navigate = useNavigate();
+    const { getRooms } = useRoom();
 
-  function handleGoChat(): void {
-    throw new Error('Function not implemented.');
-  }
+  const handleGoChat = async () => {
+    if (!getCookie('accessToken')) {
+      toast.warning('로그인이 필요합니다.');
+      onLoginClick();
+      return;
+    }
+
+    try {
+      const roomsResult = await getRooms.refetch();
+      const rooms = roomsResult.data;
+
+      if (!rooms?.length) {
+        toast.info('상담방이 존재하지 않습니다. 먼저 방을 생성해주세요.');
+        return;
+      }
+
+      navigate(`/chat/${rooms[0].id}`);
+    } catch (error) {
+      toast.error('채팅방 정보를 불러오는 중 오류가 발생했습니다.');
+    }
+  };
 
   return (
     <StyledHeader>
