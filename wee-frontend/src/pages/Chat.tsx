@@ -4,10 +4,14 @@ import smile from '../assets/smileface.png';
 import { useNavigate, useParams } from 'react-router-dom';
 import Header from '../components/Header';
 import LoginModal from '../components/LoginModal';
+import Sidebar from '../components/Sidebar';
 import { deleteCookie, getCookie } from '../utils';
 import { useChat } from '../hooks/useChat';
-import type { MessageType, Sender} from '../types/message.type';
-import { useState } from 'react';
+import type { MessageType, Sender } from '../types/message.type';
+import { useEffect, useState } from 'react';
+import { useRoom } from '../hooks/useRoom';
+import CreateRoomModal from '../components/RoomModal';
+import { Toastify } from '../toastify';
 
 const Chat = () => {
   const { roomId } = useParams();
@@ -17,7 +21,34 @@ const Chat = () => {
   const [isLoggedIn, setIsLoggedIn] = useState(!!accessToken);
   const [isLoginModalOpen, setLoginModalOpen] = useState(false);
   const [isAnimating, setAnimating] = useState(false);
+  const [isSidebarOpen, setSidebarOpen] = useState(false);
+  const [isCreateRoomModalOpen, setCreateRoomModalOpen] = useState(false);
 
+  const { getRooms, createRoom } = useRoom();
+
+  useEffect(() => {
+    if (isLoggedIn && getRooms.data && getRooms.data.length === 0) {
+      setCreateRoomModalOpen(true);
+    }
+  }, [isLoggedIn, getRooms.data]);
+
+  const handleCreateRoom = async (roomName: string) => {
+    try {
+      await createRoom.mutateAsync({ name: roomName });
+      Toastify({
+        type: 'success',
+        message: '새 채팅방이 생성되었습니다!',
+        iconType: 'success',
+      });
+      setSidebarOpen(false);
+    } catch (error) {
+      Toastify({
+        type: 'error',
+        message: '채팅방 생성에 실패했습니다.',
+        iconType: 'error',
+      });
+    }
+  };
 
   const { messages, question, setQuestion, sendMessage } = useChat(numericRoomId);
 
@@ -45,38 +76,66 @@ const Chat = () => {
     openLoginModal();
   };
 
+  const toggleSidebar = () => {
+    setSidebarOpen(!isSidebarOpen);
+  };
+
+  const handleRoomSelect = (roomId: number) => {
+    navigate(`/chat/${roomId}`);
+    setSidebarOpen(false);
+  };
+
   return (
     <Container>
-      <Header onLoginClick={openLoginModal} isLoggedIn={isLoggedIn} onLogout={handleLogout} />
-
-      <ChatLog>
-        {messages.map((msg: MessageType, index: number) => (
-          <UserMessage sender={msg.sender} key={index}>
-            {msg.sender === 'ai' && <img src={smile} alt="AI" />}
-            <Message sender={msg.sender}>{msg.text}</Message>
-          </UserMessage>
-        ))}
-      </ChatLog>
-
-      {!isLoggedIn && (
-        <DisabledMessage>
-          로그인 후 이용하실 수 있습니다.
-          <DisabledButton onClick={handleLoginButtonClick}>로그인하기</DisabledButton>
-        </DisabledMessage>
-      )}
+      <Header 
+        onLoginClick={openLoginModal} 
+        isLoggedIn={isLoggedIn} 
+        onLogout={handleLogout}
+        onMenuClick={toggleSidebar}
+        isSidebarOpen={isSidebarOpen}
+      />
 
       {isLoggedIn && (
-        <StyledInput>
-          <input
-            type="text"
-            placeholder="고민을 자유롭게 얘기해주세요."
-            value={question}
-            onChange={e => setQuestion(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && sendMessage()}
-          />
-          <img src={chatInputBtn} alt="send" className="chat-input-btn" onClick={sendMessage} />
-        </StyledInput>
+        <Sidebar 
+          isOpen={isSidebarOpen}
+          onToggle={toggleSidebar}
+          currentRoomId={numericRoomId}
+          onRoomSelect={handleRoomSelect}
+          onCreateRoom={async () => setCreateRoomModalOpen(true)} // 💡 클릭 시 모달 열기
+          rooms={getRooms.data || []}
+        />
       )}
+
+      <MainContent isSidebarOpen={isSidebarOpen}>
+        <ChatLog>
+          {messages.map((msg: MessageType, index: number) => (
+            <UserMessage sender={msg.sender} key={index}>
+              {msg.sender === 'ai' && <img src={smile} alt="AI" />}
+              <Message sender={msg.sender}>{msg.text}</Message>
+            </UserMessage>
+          ))}
+        </ChatLog>
+
+        {!isLoggedIn && (
+          <DisabledMessage>
+            로그인 후 이용하실 수 있습니다.
+            <DisabledButton onClick={handleLoginButtonClick}>로그인하기</DisabledButton>
+          </DisabledMessage>
+        )}
+
+        {isLoggedIn && (
+          <StyledInput isSidebarOpen={isSidebarOpen}>
+            <input
+              type="text"
+              placeholder="고민을 자유롭게 얘기해주세요."
+              value={question}
+              onChange={e => setQuestion(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && sendMessage()}
+            />
+            <img src={chatInputBtn} alt="send" className="chat-input-btn" onClick={sendMessage} />
+          </StyledInput>
+        )}
+      </MainContent>
 
       {isLoginModalOpen && (
         <LoginModal
@@ -85,9 +144,45 @@ const Chat = () => {
           className={isAnimating ? 'fade-out' : ''}
         />
       )}
+
+      {isCreateRoomModalOpen && (
+        <CreateRoomModal
+          onClose={() => setCreateRoomModalOpen(false)}
+          onCreate={handleCreateRoom}
+        />
+      )}
     </Container>
   );
 };
+
+
+const Container = styled.div`
+  display: flex;
+  width: 100%;
+  height: 100vh;
+  background-color: #f6f4fc;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+`;
+
+const MainContent = styled.div.withConfig({
+  shouldForwardProp: (prop) => prop !== 'isSidebarOpen'
+})<{ isSidebarOpen: boolean }>`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  height: calc(100vh - 80px);
+  width: 100%;
+  transition: margin-left 0.3s ease, width 0.3s ease;
+  margin-left: ${({ isSidebarOpen }) => (isSidebarOpen ? '350px' : '0')};
+  width: ${({ isSidebarOpen }) => (isSidebarOpen ? 'calc(100% - 350px)' : '100%')};
+
+  @media only screen and (max-width: 480px) {
+    margin-left: 0;
+    width: 100%;
+  }
+`;
 
 const DisabledMessage = styled.div`
   position: fixed;
@@ -101,6 +196,7 @@ const DisabledMessage = styled.div`
   flex-direction: column;
   align-items: center;
   gap: 50px;
+  z-index: 10;
 `;
 
 const DisabledButton = styled.button`
@@ -118,12 +214,30 @@ const ChatLog = styled.div`
   height: calc(100% - 100px);
   border-radius: 10px;
   padding: 0 20px;
-  padding-top: 80px;
+  padding-top: 20px;
   display: flex;
   align-items: center;
   flex-direction: column;
   overflow-y: scroll;
   gap: 20px;
+  
+  &::-webkit-scrollbar {
+    width: 6px;
+  }
+  
+  &::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 3px;
+  }
+  
+  &::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 3px;
+  }
+  
+  &::-webkit-scrollbar-thumb:hover {
+    background: #a8a8a8;
+  }
 `;
 
 const UserMessage = styled.div<{ sender: Sender }>`
@@ -155,16 +269,9 @@ const Message = styled.span<{ sender: Sender }>`
   font-size: 1rem;
 `;
 
-const Container = styled.div`
-  display: flex;
-  width: 100%;
-  height: 100vh;
-  background-color: #f6f4fc;
-  flex-direction: column;
-  align-items: center;
-`;
-
-const StyledInput = styled.div`
+const StyledInput = styled.div.withConfig({
+  shouldForwardProp: (prop) => prop !== 'isSidebarOpen'
+})<{ isSidebarOpen: boolean }>`
   position: fixed;
   bottom: 0;
   margin-bottom: 40px;
@@ -179,11 +286,21 @@ const StyledInput = styled.div`
   align-items: center;
   justify-content: space-between;
   padding: 0;
+  z-index: 10;
+  left: 50%;
+  transform: translateX(-50%);
+  
+  /* 사이드바가 열렸을 때 입력창 위치 조정 */
+  ${({ isSidebarOpen }) => isSidebarOpen && `
+    left: calc(50% + 175px);
+  `}
+  
   input {
     width: 90%;
     height: 100%;
     padding-left: 20px;
   }
+  
   .chat-input-btn {
     width: 32px;
     height: 32px;
@@ -195,8 +312,14 @@ const StyledInput = styled.div`
       cursor: pointer;
     }
   }
+  
   @media only screen and (max-width: 1080px) {
     width: 90%;
+  }
+  
+  @media only screen and (max-width: 480px) {
+    left: 50%;
+    transform: translateX(-50%);
   }
 `;
 

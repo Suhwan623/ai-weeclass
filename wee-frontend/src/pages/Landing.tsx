@@ -24,12 +24,12 @@ const Landing = () => {
     try {
       const roomsResult = await getRooms.refetch();
       const rooms = roomsResult.data;
-      
+
       if (!rooms?.length) {
         setRoomModalOpen(true);
         return false;
       }
-      
+
       navigate(`/chat/${rooms[0].id}`);
       return true;
     } catch (error) {
@@ -58,7 +58,6 @@ const Landing = () => {
   };
 
   const handleLogout = () => {
-    console.log('로그아웃 완료');
     deleteCookie('accessToken');
     setIsLoggedIn(false);
     navigate('/');
@@ -85,7 +84,11 @@ const Landing = () => {
 
   return (
     <Container>
-      <Header onLoginClick={openLoginModal} isLoggedIn={isLoggedIn} onLogout={handleLogout} />
+      <Header 
+        onLoginClick={openLoginModal} 
+        isLoggedIn={isLoggedIn} 
+        onLogout={handleLogout} 
+      />
       <FirstSection>
         <div className='inner'>
           <div className='first-left'>
