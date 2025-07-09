@@ -18,7 +18,7 @@ import { RoomModule } from './room/room.module';
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => ({
         retryAttempts: configService.get('NODE_ENV') === 'prod' ? 10 : 1,
-        type: 'mysql',
+        type: 'postgres',
         host: configService.get('DB_HOST'),
         port: Number(configService.get('DB_PORT')),
         database: configService.get('DB_NAME'),
