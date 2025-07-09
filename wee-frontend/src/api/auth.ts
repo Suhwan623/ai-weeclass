@@ -38,3 +38,38 @@ export const getWithToken = async (
         throw error;
     }
 }
+
+export const patchWithToken = async (
+  accessToken: string | null,
+  url: string,
+  data: Record<string, any> // 수정 시 일반 객체 사용
+): Promise<any> => {
+  try {
+    const response = await CommonAPI.patch(url, data, {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    });
+    return response.data;
+  } catch (error) {
+    console.error('PATCH ERROR:', error);
+    throw error;
+  }
+};
+
+export const deleteWithToken = async (
+  accessToken: string | null,
+  url: string
+): Promise<any> => {
+  try {
+    const response = await CommonAPI.delete(url, {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    });
+    return response.data;
+  } catch (error) {
+    console.error("DELETE ERROR:", error);
+    throw error;
+  }
+};

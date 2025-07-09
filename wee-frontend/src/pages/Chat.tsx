@@ -11,6 +11,7 @@ import type { MessageType, Sender } from '../types/message.type';
 import { useEffect, useState } from 'react';
 import { useRoom } from '../hooks/useRoom';
 import CreateRoomModal from '../components/RoomModal';
+import DeleteModal from '../components/DeleteModal';
 import { Toastify } from '../toastify';
 
 const Chat = () => {
@@ -23,30 +24,81 @@ const Chat = () => {
   const [isAnimating, setAnimating] = useState(false);
   const [isSidebarOpen, setSidebarOpen] = useState(false);
   const [isCreateRoomModalOpen, setCreateRoomModalOpen] = useState(false);
-
-  const { getRooms, createRoom } = useRoom();
+  const [isDeleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [targetRoomId, setTargetRoomId] = useState<number | null>(null);
+  const [justCreatedRoom, setJustCreatedRoom] = useState(false); // ✅ 최근 생성 여부
+  const { getRooms, createRoom, updateRoom, deleteRoom } = useRoom();
 
   useEffect(() => {
-    if (isLoggedIn && getRooms.data && getRooms.data.length === 0) {
+    if (
+      isLoggedIn &&
+      getRooms.isSuccess &&
+      !getRooms.isFetching &&
+      (getRooms.data?.length ?? 0) === 0 &&
+      !justCreatedRoom
+    ) {
       setCreateRoomModalOpen(true);
     }
-  }, [isLoggedIn, getRooms.data]);
+  }, [isLoggedIn, getRooms.data, getRooms.isFetching, getRooms.isSuccess, justCreatedRoom]);
 
   const handleCreateRoom = async (roomName: string) => {
     try {
-      await createRoom.mutateAsync({ name: roomName });
+      const created = await createRoom.mutateAsync({ name: roomName });
       Toastify({
         type: 'success',
         message: '새 채팅방이 생성되었습니다!',
         iconType: 'success',
       });
       setSidebarOpen(false);
+      setJustCreatedRoom(true); // ✅ 생성됨 표시
+      navigate(`/chat/${created.id}`);
     } catch (error) {
       Toastify({
         type: 'error',
         message: '채팅방 생성에 실패했습니다.',
         iconType: 'error',
       });
+    }
+  };
+
+  const handleUpdateRoom = async (roomId: number, newName: string) => {
+    try {
+      await updateRoom.mutateAsync({ id: roomId, name: newName });
+      Toastify({ type: 'success', message: '채팅방 이름이 수정되었습니다.' });
+      getRooms.refetch();
+    } catch (error) {
+      Toastify({ type: 'error', message: '채팅방 이름 수정에 실패했습니다.' });
+    }
+  };
+
+  const handleDeleteClick = (roomId: number) => {
+    setTargetRoomId(roomId);
+    setDeleteModalOpen(true);
+  };
+
+  const confirmDeleteRoom = async () => {
+    if (targetRoomId === null) return;
+
+    try {
+      await deleteRoom.mutateAsync(targetRoomId);
+      Toastify({
+        type: 'success',
+        message: '채팅방이 삭제되었습니다.',
+        iconType: 'success',
+      });
+
+      const remainingRooms = getRooms.data?.filter((room) => room.id !== targetRoomId) || [];
+      navigate(remainingRooms.length > 0 ? `/chat/${remainingRooms[0].id}` : '/');
+      getRooms.refetch();
+    } catch (error) {
+      Toastify({
+        type: 'error',
+        message: '채팅방 삭제에 실패했습니다.',
+        iconType: 'error',
+      });
+    } finally {
+      setDeleteModalOpen(false);
+      setTargetRoomId(null);
     }
   };
 
@@ -70,10 +122,6 @@ const Chat = () => {
     deleteCookie('accessToken');
     setIsLoggedIn(false);
     navigate('/');
-  };
-
-  const handleLoginButtonClick = () => {
-    openLoginModal();
   };
 
   const toggleSidebar = () => {
@@ -101,8 +149,10 @@ const Chat = () => {
           onToggle={toggleSidebar}
           currentRoomId={numericRoomId}
           onRoomSelect={handleRoomSelect}
-          onCreateRoom={async () => setCreateRoomModalOpen(true)} // 💡 클릭 시 모달 열기
+          onCreateRoom={() => setCreateRoomModalOpen(true)}
           rooms={getRooms.data || []}
+          onUpdateRoom={handleUpdateRoom}
+          onDeleteRoom={handleDeleteClick}
         />
       )}
 
@@ -119,7 +169,7 @@ const Chat = () => {
         {!isLoggedIn && (
           <DisabledMessage>
             로그인 후 이용하실 수 있습니다.
-            <DisabledButton onClick={handleLoginButtonClick}>로그인하기</DisabledButton>
+            <DisabledButton onClick={openLoginModal}>로그인하기</DisabledButton>
           </DisabledMessage>
         )}
 
@@ -129,8 +179,8 @@ const Chat = () => {
               type="text"
               placeholder="고민을 자유롭게 얘기해주세요."
               value={question}
-              onChange={e => setQuestion(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && sendMessage()}
+              onChange={(e) => setQuestion(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && sendMessage()}
             />
             <img src={chatInputBtn} alt="send" className="chat-input-btn" onClick={sendMessage} />
           </StyledInput>
@@ -151,10 +201,16 @@ const Chat = () => {
           onCreate={handleCreateRoom}
         />
       )}
+
+      {isDeleteModalOpen && targetRoomId !== null && (
+        <DeleteModal
+          onClose={() => setDeleteModalOpen(false)}
+          onConfirm={confirmDeleteRoom}
+        />
+      )}
     </Container>
   );
 };
-
 
 const Container = styled.div`
   display: flex;
