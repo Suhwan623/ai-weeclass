@@ -9,8 +9,11 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
   app.enableCors({
-    origin: 'http://localhost:5173', // 프론트엔드 주소
-    credentials: true, 
+    origin: [
+      'http://localhost:5173',                    // 로컬 개발용
+      'https://ai-weeclass-frontend.vercel.app', // 배포된 프론트 도메인
+    ],
+    credentials: true,
   });
 
   app.use(cookieParser());  // 미들웨어 설정
