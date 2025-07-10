@@ -252,8 +252,8 @@ const ChatRoomItem = styled.div.withConfig({
   shouldForwardProp: (prop) => prop !== 'isActive',
 })<{ isActive: boolean }>`
   position: relative;
-  padding: 15px 10px;
-  margin: 5px 0;
+  padding: 0 10px;
+  min-height: 60px;
   border-radius: 10px;
   cursor: pointer;
   background-color: ${({ isActive }) => (isActive ? '#f6f4fc' : 'transparent')};
@@ -275,15 +275,18 @@ const RoomName = styled.span`
 
 const EditInput = styled.input`
   flex: 1;
-  padding: 10px 15px;
+  padding: 0 15px;
+  height: 40px;
   font-size: 1rem;
   border-radius: 10px;
+   box-sizing: border-box;
   border: 2px solid #8161df;
   outline: none;
 `;
 
 const MoreButton = styled.button`
   font-size: 1.5rem;
+  top: 50px; 
   background: transparent;
   border: none;
   cursor: pointer;

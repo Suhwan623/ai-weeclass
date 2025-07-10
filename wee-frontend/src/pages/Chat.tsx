@@ -270,7 +270,7 @@ const ChatLog = styled.div`
   height: calc(100% - 100px);
   border-radius: 10px;
   padding: 0 20px;
-  padding-top: 20px;
+  padding-top: 100px;
   display: flex;
   align-items: center;
   flex-direction: column;
